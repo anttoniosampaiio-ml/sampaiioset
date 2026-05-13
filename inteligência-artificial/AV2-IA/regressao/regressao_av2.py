@@ -249,27 +249,50 @@ def analisar_correlacoes(df):
 def plotar_top_correlacoes(tabela_corr, top_n=15):
     """
     Plota os atributos com maior correlação absoluta com a variável alvo.
-    Esse gráfico ajuda a justificar a escolha dos atributos relevantes no relatório.
-    """
-    top_corr = tabela_corr.head(top_n).reset_index()
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    O gráfico mostra apenas a força da relação com ViolentCrimesPerPop,
+    usando a correlação absoluta.
+    """
+    df_plot = tabela_corr.head(top_n).copy()
+
+    # Transforma o índice, que contém o nome dos atributos, em coluna
+    df_plot = df_plot.reset_index()
+
+    # Garante nomes corretos para as colunas
+    df_plot.columns = ["atributo", "correlacao", "correlacao_abs"]
+
+    fig, ax = plt.subplots(figsize=(10, 7))
+
     sns.barplot(
-        data=top_corr,
-        x="correlacao",
-        y="index",
+        data=df_plot,
+        y="atributo",
+        x="correlacao_abs",
         color="steelblue",
         ax=ax
     )
-    ax.axvline(0, color="black", linewidth=1)
-    ax.set_title(f"Top {top_n} correlações com ViolentCrimesPerPop")
-    ax.set_xlabel("Correlação de Pearson")
-    ax.set_ylabel("Atributos")
+
+    ax.set_title(
+        f"Top {top_n} atributos com maior correlação com ViolentCrimesPerPop"
+    )
+    ax.set_xlabel("Correlação absoluta")
+    ax.set_ylabel("Atributo")
+
+    for i, valor in enumerate(df_plot["correlacao_abs"]):
+        ax.text(
+            valor + 0.01,
+            i,
+            f"{valor:.4f}",
+            va="center",
+            fontsize=9
+        )
+
+    ax.set_xlim(0, df_plot["correlacao_abs"].max() + 0.08)
+
     plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / "top_correlacoes_regressao.png", dpi=150)
+    plt.savefig(OUTPUT_DIR / "top_15_correlacoes_regressao.png", dpi=150)
     plt.close()
 
-    print("salvo: top_correlacoes_regressao.png")
+    print("salvo: top_15_correlacoes_regressao.png")
 
 
 def plotar_heatmap_correlacao(df, tabela_corr, top_n=10):
@@ -316,7 +339,6 @@ def selecionar_features(df, tabela_corr, top_n=15):
     print(selected_features)
 
     return X, y, selected_features
-
 
 # -------------------------------------------------------
 # 5. Preparação para modelagem
@@ -437,23 +459,46 @@ def plotar_comparacao_modelos(df_resultados):
     """
     Gera gráficos comparando os modelos por RMSE e R².
     Quanto menor o RMSE, melhor. Quanto maior o R², melhor.
+
+    Como os resultados ficaram muito próximos, o eixo Y foi ajustado
+    para facilitar a visualização das pequenas diferenças entre os modelos.
     """
     df_plot = df_resultados.reset_index()
 
+    # -------------------------------------------------------
+    # Gráfico de comparação por RMSE
+    # -------------------------------------------------------
     fig, ax = plt.subplots(figsize=(8, 5))
     sns.barplot(data=df_plot, x="modelo", y="RMSE", color="steelblue", ax=ax)
+
+    minimo_rmse = df_plot["RMSE"].min()
+    maximo_rmse = df_plot["RMSE"].max()
+    margem_rmse = 0.002
+    ax.set_ylim(minimo_rmse - margem_rmse, maximo_rmse + margem_rmse)
+
     ax.set_title("Comparação dos modelos - RMSE")
     ax.set_xlabel("Modelo")
     ax.set_ylabel("RMSE")
+
     plt.tight_layout()
     plt.savefig(OUTPUT_DIR / "comparacao_rmse_regressao.png", dpi=150)
     plt.close()
 
+    # -------------------------------------------------------
+    # Gráfico de comparação por R²
+    # -------------------------------------------------------
     fig, ax = plt.subplots(figsize=(8, 5))
     sns.barplot(data=df_plot, x="modelo", y="R2", color="steelblue", ax=ax)
+
+    minimo_r2 = df_plot["R2"].min()
+    maximo_r2 = df_plot["R2"].max()
+    margem_r2 = 0.01
+    ax.set_ylim(minimo_r2 - margem_r2, maximo_r2 + margem_r2)
+
     ax.set_title("Comparação dos modelos - R²")
     ax.set_xlabel("Modelo")
     ax.set_ylabel("R²")
+
     plt.tight_layout()
     plt.savefig(OUTPUT_DIR / "comparacao_r2_regressao.png", dpi=150)
     plt.close()
@@ -721,14 +766,14 @@ def main():
     explorar_dados(df)
 
     tabela_missing = verificar_missing(df)
-    plotar_missing(tabela_missing)
+    #plotar_missing(tabela_missing)
 
     df_limpo, colunas_removidas = preparar_base(df)
 
     plotar_distribuicao_target(df_limpo)
 
     tabela_corr = analisar_correlacoes(df_limpo)
-    plotar_top_correlacoes(tabela_corr, top_n=15)
+    #plotar_top_correlacoes(tabela_corr, top_n=15)
     plotar_heatmap_correlacao(df_limpo, tabela_corr, top_n=10)
 
     X, y, selected_features = selecionar_features(df_limpo, tabela_corr, top_n=15)
